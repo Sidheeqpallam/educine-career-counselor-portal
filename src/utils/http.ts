@@ -1,9 +1,9 @@
 import axios, { AxiosResponse } from 'axios'
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/educine'
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000'
 
 const http = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: `${API_BASE_URL}/api/educine`,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

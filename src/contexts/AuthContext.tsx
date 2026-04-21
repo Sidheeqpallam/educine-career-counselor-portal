@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Counselor } from '../types';
+import http from '../utils/http';
 
 interface AuthContextType {
   counselor: Counselor | null;
@@ -34,19 +35,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (mobile: string) => {
-    const response = await fetch(`${process.env.REACT_APP_API_URL}/api/educine/counselors/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ mobile }),
-    });
+    const response = await http.post('/counselors/login', { mobile });
+    const data = response.data || {};
 
-    if (!response.ok) {
+    // Try multiple token locations to be resilient to API shape
+    const token = data.data?.token || data.token || data.data?.authToken || data.authToken || '';
+
+    if (!data.data || !data.data.id) {
       throw new Error('Login failed');
     }
 
-    const data = await response.json();
     const counselorInfo: Counselor = {
       id: data.data.id,
       name: data.data.name,
@@ -54,7 +52,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     setCounselor(counselorInfo);
-    localStorage.setItem('counselorToken', 'dummy-token'); // In real app, use actual token
+    if (token) {
+      localStorage.setItem('counselorToken', token);
+    }
     localStorage.setItem('counselorInfo', JSON.stringify(counselorInfo));
   };
 
