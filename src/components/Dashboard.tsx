@@ -100,8 +100,9 @@ const Dashboard: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
-  const searchStudent = async () => {
-    if (!searchQuery.trim()) {
+  const searchStudent = async (queryOverride?: string) => {
+    const q = (queryOverride ?? searchQuery).trim();
+    if (!q) {
       setError('Please enter a name or mobile number');
       return;
     }
@@ -113,7 +114,7 @@ const Dashboard: React.FC = () => {
 
     try {
       const response = await http.post('/counselors/search', {
-        query: searchQuery.trim(),
+        query: q,
         includeMadrasa: true,
         counselorId: counselor?.id,
       });
@@ -188,16 +189,20 @@ const Dashboard: React.FC = () => {
   };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') searchStudent();
+    if (e.key === 'Enter') {
+      if (searchDebounce.current) window.clearTimeout(searchDebounce.current);
+      searchStudent();
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+    const value = e.target.value;
+    setSearchQuery(value);
     setError('');
     if (searchDebounce.current) window.clearTimeout(searchDebounce.current);
-    if (e.target.value.trim()) {
+    if (value.trim()) {
       searchDebounce.current = window.setTimeout(() => {
-        searchStudent();
+        searchStudent(value);
       }, 450);
     } else {
       setCandidates([]);
