@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import {
   Search, LogOut, User, Brain, MessageSquare, Loader2,
-  GraduationCap, BookOpen, Phone, Mail, Hash, Clock, ChevronRight,
+  GraduationCap, BookOpen, Phone, Mail, Clock, ChevronRight,
 } from 'lucide-react';
 import { Student, NoteRequest } from '../types';
 import http from '../utils/http';
