@@ -24,7 +24,7 @@ export interface StudentDetails {
 export interface AptitudeTest {
   id: string
   studentRegistrationId: string
-  responses: Record<string, any>
+  aptitudeTest?: string  // JSON string: [{question, answer, category}]
   result?: string
   createdAt: string
 }

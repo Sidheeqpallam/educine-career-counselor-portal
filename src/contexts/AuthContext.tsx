@@ -20,10 +20,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('counselorToken');
     const counselorInfo = localStorage.getItem('counselorInfo');
 
-    if (token && counselorInfo) {
+    if (counselorInfo) {
       try {
         setCounselor(JSON.parse(counselorInfo));
       } catch (error) {

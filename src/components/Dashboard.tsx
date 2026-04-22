@@ -5,10 +5,11 @@ import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import {
   Search, LogOut, User, Brain, MessageSquare, Loader2,
-  GraduationCap, BookOpen, Phone, Mail, Clock, ChevronRight,
+  GraduationCap, BookOpen, Phone, Mail, Clock, ChevronRight, ScanLine, ChevronDown,
 } from 'lucide-react';
 import { Student, NoteRequest } from '../types';
 import http from '../utils/http';
+import QRScanner from './QRScanner';
 
 const studentTypeBadge = (type?: string) => {
   if (!type) return null;
@@ -88,6 +89,8 @@ const Dashboard: React.FC = () => {
   const [note, setNote] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [qaOpen, setQaOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -138,6 +141,16 @@ const Dashboard: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleQRScan = async (value: string) => {
+    setShowScanner(false);
+    // QR value is the student registration ID
+    const id = value.trim();
+    if (!id) return;
+    setSearchQuery('');
+    setCandidates([]);
+    await fetchStudentById(id);
   };
 
   const fetchStudentById = async (id: string) => {
@@ -348,6 +361,30 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="flex" style={{ gap: '0.625rem' }}>
+              <button
+                onClick={() => setShowScanner(true)}
+                title="Scan QR Code"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  gap: '0.4rem',
+                  padding: '0 0.875rem',
+                  background: 'linear-gradient(135deg, #15803d 0%, #166534 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                  transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.88')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+              >
+                <ScanLine className="w-4 h-4" />
+                <span className="hidden sm:inline">Scan QR</span>
+              </button>
               <div style={{ position: 'relative', flex: 1 }}>
                 {isLoading ? (
                   <Loader2
@@ -491,7 +528,14 @@ const Dashboard: React.FC = () => {
                 <CardContent>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.875rem' }}>
                     {Object.entries(student.details)
-                      .filter(([key, val]) => val !== null && val !== undefined && val !== '' && key !== 'id' && key !== 'registrationId')
+                      .filter(([key, val]) =>
+                        val !== null &&
+                        val !== undefined &&
+                        val !== '' &&
+                        key !== 'id' &&
+                        key !== 'registrationId' &&
+                        key !== 'stalls'
+                      )
                       .map(([key, val]) => (
                         <div
                           key={key}
@@ -508,62 +552,152 @@ const Dashboard: React.FC = () => {
             )}
 
             {/* Aptitude Test */}
-            {student.aptitudeTest && (
-              <Card style={{ boxShadow: '0 2px 8px rgba(22,163,74,0.08)' }}>
-                <CardHeader>
-                  <CardTitle>
-                    <Brain className="w-4 h-4" style={{ color: '#16a34a' }} />
-                    Aptitude Test Results
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-start' }}>
-                    {student.aptitudeTest.result && (
-                      <div style={{ flex: '0 0 auto' }}>
-                        <div className="detail-label" style={{ marginBottom: '0.35rem' }}>Score / Result</div>
-                        <span className="score-pill">{student.aptitudeTest.result}</span>
-                      </div>
-                    )}
-                    <div style={{ flex: '0 0 auto' }}>
-                      <div className="detail-label" style={{ marginBottom: '0.35rem' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <Clock className="w-3 h-3" /> Date
-                        </span>
-                      </div>
-                      <div className="detail-value">{formatDate(student.aptitudeTest.createdAt)}</div>
-                    </div>
-                  </div>
+            {student.aptitudeTest && (() => {
+              const qaItems: Array<{ question: string; answer: number; category: string }> = (() => {
+                try {
+                  const raw = student.aptitudeTest!.aptitudeTest;
+                  return raw ? JSON.parse(raw) : [];
+                } catch { return []; }
+              })();
+              const resultLines = student.aptitudeTest.result
+                ? student.aptitudeTest.result.split('\n').filter(Boolean)
+                : [];
 
-                  {student.aptitudeTest.responses &&
-                    Object.keys(student.aptitudeTest.responses).length > 0 && (
-                      <div style={{ marginTop: '1rem' }}>
-                        <div className="detail-label" style={{ marginBottom: '0.5rem' }}>Responses</div>
-                        <div
-                          style={{
-                            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))',
-                            gap: '0.5rem',
-                          }}
-                        >
-                          {Object.entries(student.aptitudeTest.responses).map(([q, a]) => (
+              return (
+                <Card style={{ boxShadow: '0 2px 8px rgba(22,163,74,0.08)' }}>
+                  <CardHeader>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <CardTitle>
+                        <Brain className="w-4 h-4" style={{ color: '#16a34a' }} />
+                        Aptitude Test Results
+                      </CardTitle>
+                      <span className="detail-label" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <Clock className="w-3 h-3" />
+                        {formatDate(student.aptitudeTest.createdAt)}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Result — main highlight */}
+                    {resultLines.length > 0 && (
+                      <div
+                        style={{
+                          background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+                          border: '1px solid #86efac',
+                          borderRadius: '0.75rem',
+                          padding: '1rem 1.25rem',
+                          marginBottom: '1rem',
+                        }}
+                      >
+                        <div className="detail-label" style={{ marginBottom: '0.5rem', color: '#15803d' }}>
+                          Career Profile Rankings
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {resultLines.map((line, i) => (
                             <div
-                              key={q}
+                              key={i}
                               style={{
-                                background: '#f8fffe', border: '1px solid #bbf7d0',
-                                borderRadius: '0.4rem', padding: '0.5rem 0.75rem',
+                                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                background: 'white', border: '1px solid #bbf7d0',
+                                borderRadius: '0.5rem', padding: '0.5rem 0.875rem',
                               }}
                             >
-                              <div className="detail-label">{formatKey(q)}</div>
-                              <div className="detail-value" style={{ fontSize: '0.85rem' }}>
-                                {typeof a === 'object' ? JSON.stringify(a) : String(a)}
-                              </div>
+                              <span
+                                style={{
+                                  width: '1.5rem', height: '1.5rem', borderRadius: '9999px',
+                                  background: i === 0 ? '#15803d' : i === 1 ? '#16a34a' : '#22c55e',
+                                  color: 'white', fontWeight: 700, fontSize: '0.75rem',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {i + 1}
+                              </span>
+                              <span style={{ color: '#1e293b', fontWeight: 600, fontSize: '0.9rem', overflowWrap: 'anywhere' }}>
+                                {line.replace(/^#\d+\s*/, '')}
+                              </span>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
-                </CardContent>
-              </Card>
-            )}
+
+                    {/* Q&A accordion */}
+                    {qaItems.length > 0 && (
+                      <div>
+                        <button
+                          onClick={() => setQaOpen((o) => !o)}
+                          style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            background: '#f8fffe', border: '1px solid #bbf7d0', borderRadius: '0.5rem',
+                            padding: '0.6rem 0.875rem', cursor: 'pointer', fontWeight: 600,
+                            fontSize: '0.82rem', color: '#15803d',
+                          }}
+                        >
+                          <span>View Question &amp; Answer Details ({qaItems.length} questions)</span>
+                          <ChevronDown
+                            className="w-4 h-4"
+                            style={{
+                              transition: 'transform 0.2s',
+                              transform: qaOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                            }}
+                          />
+                        </button>
+
+                        {qaOpen && (
+                          <div
+                            style={{
+                              marginTop: '0.5rem',
+                              border: '1px solid #bbf7d0',
+                              borderRadius: '0.5rem',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <div style={{ maxHeight: '22rem', overflowY: 'auto' }}>
+                              {qaItems.map((item, idx) => (
+                                <div
+                                  key={idx}
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '1fr auto',
+                                    gap: '0.75rem',
+                                    padding: '0.625rem 0.875rem',
+                                    borderBottom: idx < qaItems.length - 1 ? '1px solid #e8f5e9' : undefined,
+                                    alignItems: 'center',
+                                    background: idx % 2 === 0 ? 'white' : '#f8fffe',
+                                  }}
+                                >
+                                  <div>
+                                    <div style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 600, marginBottom: '0.2rem' }}>
+                                      {item.category}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', color: '#1e293b', lineHeight: 1.5, overflowWrap: 'anywhere' }}>
+                                      {item.question}
+                                    </div>
+                                  </div>
+                                  <div
+                                    style={{
+                                      width: '2rem', height: '2rem', borderRadius: '9999px',
+                                      background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
+                                      border: '1px solid #86efac',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      fontWeight: 700, fontSize: '0.9rem', color: '#15803d',
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    {item.answer}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {/* Counseling Notes */}
             <Card style={{ boxShadow: '0 2px 8px rgba(22,163,74,0.08)' }}>
@@ -690,6 +824,14 @@ const Dashboard: React.FC = () => {
           </Card>
         )}
       </main>
+
+      {/* QR Scanner overlay */}
+      {showScanner && (
+        <QRScanner
+          onScan={handleQRScan}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>
   );
 };
